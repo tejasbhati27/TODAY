@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Creative Quill Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Puter.js for T2I/T2S and Puter Chat Provider -->
+    <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+
+    <div id="app-container">
+
+        <!-- Chat History Sidebar (Left) -->
+        <aside id="chat-history-sidebar">
+            <h2>Chat History</h2>
+            <button id="new-chat-btn" title="Start a new chat session">+ New Chat</button>
+            <ul id="chat-list">
+                <!-- Chat history items will be populated here -->
+            </ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div id="main-content-area">
+
+            <!-- Header with Toggle Buttons -->
+            <div id="main-area-header">
+                <button id="toggle-history-btn" class="sidebar-toggle-btn" title="Toggle History Panel (☰ / ✕)" aria-label="Toggle History Panel"></button>
+                <div class="header-spacer"></div>
+                <button id="toggle-controls-btn" class="sidebar-toggle-btn" title="Toggle Controls Panel (⚙️ / ✕)" aria-label="Toggle Controls Panel"></button>
+            </div>
+
+            <!-- Chat Message Display Area -->
+            <main id="chat-view">
+                 <div class="message ai-message placeholder-message">
+                     <div class="message-content">
+                        Welcome! Configure your desired Chat Provider in controls (⚙️). <br>Puter provider uses your logged-in Puter account.<br>Other providers require API keys (stored locally).<br>Text-to-Image (🖼️) & Text-to-Speech (🔊) always use Puter.
+                    </div>
+                </div>
+                 <!-- Area for Text-to-Image Output -->
+                 <div id="image-output-area" style="display: none;">
+                    <h4>Generated Image:</h4>
+                    <img id="generated-image" src="" alt="Generated Image">
+                    <p id="image-status"></p>
+                 </div>
+            </main>
+
+            <!-- Input Area Footer -->
+            <footer id="input-area">
+                <input type="file" id="file-input" accept="image/*,application/pdf,text/*,.doc,.docx,.ppt,.pptx,.xls,.xlsx" style="display: none;" aria-hidden="true">
+                <button id="upload-btn" class="file-upload-btn" title="Upload File (Requires Backend Setup)" aria-label="Upload File">📎</button>
+                <textarea id="chat-input" placeholder="Enter message for chat, or prompt for image..." rows="1" aria-label="Chat input message"></textarea>
+                <button id="generate-btn" title="Generate chat response (Enter)">Chat</button>
+                <button id="generate-image-btn" class="puter-feature-btn" title="Generate Image (Uses Puter Text-to-Image)">🖼️ Img</button>
+            </footer>
+            <div id="upload-status" class="upload-status-indicator" aria-live="polite"></div>
+        </div>
+
+        <!-- Studio Controls Sidebar (Right) -->
+        <aside id="studio-controls-sidebar">
+             <div id="controls-header">
+                 <h2>Studio Controls</h2>
+            </div>
+            <div id="controls-content">
+
+                <!-- API Configuration Section -->
+                <div class="control-group api-config collapsed">
+                    <div class="api-config-header" id="api-config-toggle" title="Click to expand/collapse API settings" role="button" aria-expanded="false" tabindex="0">
+                        <h4>API Configuration (Chat)</h4>
+                        <span class="api-config-arrow" aria-hidden="true"></span>
+                    </div>
+                    <div class="api-config-content" id="api-config-content">
+                        <p class="api-config-desc">Configure the Provider and Model for the Chat functionality. API Key saved locally (if required). Text-to-Image and Text-to-Speech always use Puter.</p>
+
+                         <div>
+                             <label for="provider-select">Chat API Provider</label>
+                             <select id="provider-select" name="api-provider">
+                                 <option value="">-- Select Provider --</option>
+                                 <option value="puter">Puter (Uses Puter Account)</option>
+                                 <option value="openrouter">OpenRouter</option>
+                                 <option value="vertexai">Google Vertex AI</option>
+                                 <option value="gemini">Google AI Studio (Gemini)</option>
+                                 <option value="fireworksai">Fireworks.ai</option>
+                                 <option value="mistralai">Mistral AI</option>
+                                 <option value="cohere">Cohere</option>
+                                 <option value="anthropic">Anthropic</option>
+                                 <!-- Add other backend-supported providers here if needed -->
+                             </select>
+                         </div>
+
+                         <div class="api-key-group">
+                             <label for="api-key-input">API Key / Identifier</label>
+                             <input type="password" id="api-key-input" name="api-key" placeholder="Paste your key or identifier">
+                         </div>
+
+                         <div class="api-key-placeholder-puter">
+                             Puter.js uses the user's account - no API key needed here for Chat. Select a model below.
+                         </div>
+
+                         <div>
+                             <label for="model-select">Select Chat Model ID</label>
+                             <select id="model-select" name="model-identifier">
+                                 <option value="">-- Select Provider First --</option>
+                                 <!-- Models populated by JS -->
+                             </select>
+                         </div>
+
+                         <!-- Add New Model Section -->
+                         <div>
+                             <label for="new-model-input">Add New Chat Model ID</label>
+                             <div class="add-model-container">
+                                 <input type="text" id="new-model-input" placeholder="e.g., provider/model-name">
+                                 <button id="add-model-btn" title="Add this model to the dropdown list for the selected provider">+</button>
+                             </div>
+                         </div>
+
+                         <button id="save-api-config-btn">Save Chat Config</button>
+                         <p class="config-status" aria-live="assertive"></p>
+                    </div>
+                </div>
+
+                <!-- Output Tools Section -->
+                <div class="control-group output-tools">
+                    <h4>Chat Tools & Output</h4>
+                    <div class="tool-option">
+                         <label for="general-tools-toggle">Enable General Writing Tools</label>
+                         <div class="toggle-switch-wrapper">
+                             <input type="checkbox" id="general-tools-toggle" name="general-tools-toggle" class="toggle-switch">
+                             <label for="general-tools-toggle" class="toggle-switch-label" aria-hidden="true"></label>
+                         </div>
+                    </div>
+                    <div class="tool-option">
+                         <label for="structured-output-toggle">Enable Structured Output (Markdown)</label>
+                         <div class="toggle-switch-wrapper">
+                             <input type="checkbox" id="structured-output-toggle" name="structured-output-toggle" class="toggle-switch">
+                              <label for="structured-output-toggle" class="toggle-switch-label" aria-hidden="true"></label>
+                         </div>
+                    </div>
+                 </div>
+
+                 <!-- Core Chat Generation Settings -->
+                 <div class="control-group core-controls">
+                    <h4>Chat Generation Settings</h4>
+                    <div>
+                        <label for="language-select">Language</label>
+                        <select id="language-select" name="language">
+                            <option value="" selected>-- Select (None) --</option>
+                            <option value="english">English</option>
+                            <option value="hindi">Hindi</option>
+                            <option value="spanish">Spanish</option>
+                            <option value="french">French</option>
+                            <option value="german">German</option>
+                            <!-- Add more as needed -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="writing-mode-select">Writing Mode</label>
+                        <select id="writing-mode-select" name="writing-mode">
+                            <option value="" selected>-- Select (None) --</option>
+                            <option value="speech">Speech</option>
+                            <option value="message-announcement">Message/Announcement</option>
+                            <option value="letter-official">Letter (Official)</option>
+                            <option value="story" class="general-option">Story</option>
+                            <option value="poem" class="general-option">Poem</option>
+                            <option value="letter-personal" class="general-option">Letter (Personal)</option>
+                            <option value="article-blog" class="general-option">Article/Blog Post</option>
+                            <option value="script-outline" class="general-option">Script Outline</option>
+                            <option value="brainstorming" class="general-option">Brainstorming</option>
+                        </select>
+                    </div>
+                     <div>
+                         <label for="primary-tone-select">Primary Tone</label>
+                         <select id="primary-tone-select" name="primary-tone">
+                             <option value="" selected>-- Select (None) --</option>
+                             <option value="formal">Formal</option>
+                             <option value="informal">Informal</option>
+                             <option value="inspirational">Inspirational</option>
+                             <option value="encouraging">Encouraging</option>
+                             <option value="authoritative">Authoritative</option>
+                             <option value="motivational">Motivational</option>
+                             <option value="appreciative">Appreciative</option>
+                             <option value="informative">Informative</option>
+                             <option value="celebratory">Celebratory</option>
+                             <option value="advisory">Advisory</option>
+                             <option value="serious">Serious</option>
+                             <option value="welcoming">Welcoming</option>
+                             <option value="farewell">Farewell</option>
+                             <option value="humorous" class="general-option">Humorous</option>
+                             <option value="romantic" class="general-option">Romantic</option>
+                             <option value="adventurous" class="general-option">Adventurous</option>
+                             <option value="mysterious" class="general-option">Mysterious</option>
+                             <option value="nostalgic" class="general-option">Nostalgic</option>
+                             <option value="objective" class="general-option">Objective</option>
+                             <option value="empathetic" class="general-option">Empathetic</option>
+                             <option value="neutral" class="general-option">Neutral</option>
+                         </select>
+                     </div>
+                     <div>
+                        <label for="formality-level">Formality Level</label>
+                        <select id="formality-level" name="formality">
+                            <option value="" selected>-- Select (Default) --</option>
+                            <option value="very-casual">Very Casual</option>
+                            <option value="casual">Casual</option>
+                            <option value="neutral">Neutral / Standard</option>
+                            <option value="semi-formal">Semi-Formal</option>
+                            <option value="formal">Formal</option>
+                            <option value="highly-formal">Highly Formal (Ceremonial)</option>
+                        </select>
+                     </div>
+                 </div>
+
+                 <!-- Context Specific Settings (Shown conditionally) -->
+                 <div id="speech-focus-controls" class="control-group" style="display: none;">
+                    <h4>Chat Context Specifics</h4>
+                    <div>
+                        <label for="speech-event-select">Event/Type</label>
+                        <select id="speech-event-select" name="speech-event">
+                             <option value="" selected>-- Select (None) --</option>
+                            <option value="assembly">Morning Assembly</option>
+                            <option value="annual-day">Annual Day</option>
+                            <option value="sports-day">Sports Day</option>
+                            <option value="farewell-speech">Farewell Speech</option>
+                            <option value="welcome-address">Welcome Address</option>
+                            <option value="award-ceremony">Award Ceremony</option>
+                            <option value="workshop-intro">Workshop Introduction</option>
+                            <option value="parent-meeting">Parent Meeting Address</option>
+                            <option value="staff-meeting">Staff Meeting Address</option>
+                            <option value="guest-speaker-intro">Guest Speaker Introduction</option>
+                            <option value="debate-opening">Debate Opening/Closing</option>
+                            <option value="cultural-event">Cultural Event Hosting</option>
+                            <!-- Add more relevant events -->
+                            </select>
+                    </div>
+                    <div>
+                         <label for="primary-audience-select">Primary Audience</label>
+                         <select id="primary-audience-select" name="primary-audience">
+                              <option value="" selected>-- Select (None) --</option>
+                             <option value="students-all">Students (All)</option>
+                             <option value="students-primary">Students (Primary)</option>
+                             <option value="students-secondary">Students (Secondary)</option>
+                             <option value="students-senior">Students (Senior)</option>
+                             <option value="teachers">Teachers / Staff</option>
+                             <option value="parents">Parents</option>
+                             <option value="guests">Guests / Dignitaries</option>
+                             <option value="mixed-audience">Mixed Audience</option>
+                             <!-- Add more audiences -->
+                             </select>
+                     </div>
+                     <div>
+                         <label for="secondary-audience-select">Secondary Audience (Optional)</label>
+                         <select id="secondary-audience-select" name="secondary-audience">
+                             <option value="" selected>-- Select (None) --</option>
+                             <option value="students-all">Students (All)</option>
+                             <option value="students-primary">Students (Primary)</option>
+                             <option value="students-secondary">Students (Secondary)</option>
+                             <option value="students-senior">Students (Senior)</option>
+                             <option value="teachers">Teachers / Staff</option>
+                             <option value="parents">Parents</option>
+                             <option value="guests">Guests / Dignitaries</option>
+                         </select>
+                     </div>
+                    <div>
+                        <label for="core-message">Core Message/Objective</label>
+                        <textarea id="core-message" name="core-message" rows="3" placeholder="What is the main point?"></textarea>
+                    </div>
+                    <div>
+                        <label for="call-to-action">Desired Outcome/Call to Action</label>
+                        <textarea id="call-to-action" name="call-to-action" rows="2" placeholder="What should the audience think/do?"></textarea>
+                    </div>
+                </div>
+
+                <!-- Enhancement Options -->
+                <div class="control-group enhancement-options">
+                    <h4>Chat Enhancement Options</h4>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="enhance-school-values" name="enhance-school-values">
+                        <label for="enhance-school-values">Reference School Motto/Values</label>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="enhance-achievements" name="enhance-achievements">
+                        <label for="enhance-achievements">Include School Achievements/Data</label>
+                    </div>
+                    <div class="general-option checkbox-wrapper" style="display: none;">
+                        <input type="checkbox" id="enhance-sensory" name="enhance-sensory">
+                        <label for="enhance-sensory">Include Sensory Details</label>
+                    </div>
+                     <div class="general-option checkbox-wrapper" style="display: none;">
+                        <input type="checkbox" id="enhance-dialogue" name="enhance-dialogue">
+                        <label for="enhance-dialogue">Add Dialogue (if applicable)</label>
+                    </div>
+                 </div>
+
+                 <!-- Puter Features Info -->
+                 <div class="control-group puter-features-info">
+                    <h4>Other Puter Features</h4>
+                    <p class="api-config-desc">
+                        Text-to-Image (🖼️ Img button below chat input) and Text-to-Speech (🔊 button on AI messages) are available and directly use Puter.js, regardless of the Chat API provider selected above.
+                    </p>
+                 </div>
+
+            </div> <!-- End #controls-content -->
+        </aside> <!-- End #studio-controls-sidebar -->
+
+    </div> <!-- End #app-container -->
+
+    <script src="script.js"></script>
+
+</body>
+</html>
