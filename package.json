@@ -1,0 +1,17 @@
+{
+  "name": "creative-quill-studio-vercel",
+  "version": "1.0.0",
+  "description": "Frontend and Serverless API for Creative Quill Studio (GitHub -> Vercel).",
+  "private": true,
+  "scripts": {
+    "// Note:": "The 'dev' script requires installing the Vercel CLI locally: npm i -g vercel",
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
